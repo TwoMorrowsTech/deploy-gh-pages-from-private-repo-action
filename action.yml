@@ -1,0 +1,52 @@
+name: 'Deploy Private Github Pages Site'
+description: 'Deploys a GitHub Pages site using the github-pages archive in a private repo.'
+inputs:
+  owner:
+    description: 'The owner or organizaiton of the source repository.'
+    required: true
+    default: ${{ github.repository_owner }}
+  repo:
+    description: 'The source repository.'
+    required: true
+    default: ${{ github.repository }}
+  run-id:
+    description: 'The run id of the workflow that uploaded the artifact in the source repo.'
+    required: true
+    default: ${{ github.run_id }}
+  artifact-name:
+    description: 'The artifact name uploaded in the source repo. Will be used throughout deployment.'
+    required: true
+    default: 'github-pages'
+  archive-name:
+    description: 'The archive name within the artifact.'
+    required: true
+    default: 'artifact.tar'
+  github-token:
+    description: 'A github token with actions:read permissions on src repo.'
+    required: true
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download Artifact
+      id: download-artifact
+      uses: actions/download-artifact@v4
+      with:
+        repository: ${{ inputs.owner }}/${{ inputs.repo }}
+        name: ${{ inputs.artifact-name }}
+        github-token: ${{ inputs.github-token }}
+        run-id: ${{ inputs.run-id }}
+        path: ${{ runner.temp }}
+    - name: Upload Artifact
+      id: upload-artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/${{ inputs.archive-name }}
+        if-no-files-found: error
+    - name: Deploy to GitHub Pages
+      id: deploy-to-gh-pages
+      uses: actions/deploy-pages@v4
+      with:
+        artifact_name: ${{ inputs.artifact-name }}
